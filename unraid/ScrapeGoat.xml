@@ -19,7 +19,7 @@
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Requires>Ollama container (e.g., ollama/ollama) must be running and accessible at the configured OLLAMA_HOST URL.</Requires>
+  <Requires>Ollama container (e.g., ollama/ollama) must be running and accessible at the configured OLLAMA_HOST URL. Optionally, a SearXNG container (searxng/searxng) provides an improved web scraping backend via the SEARXNG_HOST variable.</Requires>
 
   <!-- Port mapping for Gradio web UI -->
   <Config Name="WebUI Port" Target="7860" Default="7860" Mode="tcp" Description="Port for the Gradio web interface." Type="Port" Display="always" Required="true" Mask="false">7860</Config>
@@ -33,6 +33,7 @@
   <Config Name="WhisperLive Host" Target="WHISPERLIVE_HOST" Default="" Mode="" Description="(Optional) URL of a running WhisperLive service for GPU-accelerated speech transcription, e.g. http://whisperlive:9090. Use ghcr.io/collabora/whisperlive-gpu:latest as the WhisperLive container image. Leave empty to disable speech transcription (music analysis still works without it)." Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="NVIDIA Visible Devices" Target="NVIDIA_VISIBLE_DEVICES" Default="all" Mode="" Description="(Optional) NVIDIA GPU visibility for the container. Set to 'all' (default) to expose all GPUs when the NVIDIA Container Toolkit is installed. Leave empty to disable GPU access when no NVIDIA GPU is present." Type="Variable" Display="always" Required="false" Mask="false">all</Config>
   <Config Name="NVIDIA Driver Capabilities" Target="NVIDIA_DRIVER_CAPABILITIES" Default="all" Mode="" Description="(Optional) NVIDIA driver capabilities exposed to the container. Set to 'all' (default) to enable all capabilities. Leave empty when no NVIDIA GPU is present." Type="Variable" Display="always" Required="false" Mask="false">all</Config>
+  <Config Name="SearXNG Host" Target="SEARXNG_HOST" Default="" Mode="" Description="(Optional) URL of a running SearXNG instance used as the web search/scraping backend, e.g. http://searxng:8080. Use searxng/searxng:latest as the SearXNG container image. Leave empty to fall back to direct proxy scraping." Type="Variable" Display="always" Required="false" Mask="false"/>
 
   <!-- Persistent volumes -->
   <Config Name="App Data" Target="/data" Default="/mnt/user/appdata/scrapegoat" Mode="rw" Description="Persistent storage for scraped content database (db.json)." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/scrapegoat</Config>

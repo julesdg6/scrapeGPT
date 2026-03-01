@@ -1,0 +1,23 @@
+# SearXNG settings for ScrapeGoat
+# This minimal configuration enables the JSON search API used by ScrapeGoat.
+# For a full list of options see:
+#   https://searxng.github.io/searxng/admin/settings/index.html
+
+use_default_settings: true
+
+server:
+  # The secret key is overridden at runtime by the SEARXNG_SECRET environment variable
+  # set in docker-compose.yml (from your .env file).  Change SEARXNG_SECRET in .env
+  # before any internet-facing deployment.
+  # Generate a strong key: python3 -c "import secrets; print(secrets.token_hex(32))"
+  secret_key: "please-change-this-very-secret-key"
+  bind_address: "0.0.0.0"
+  port: 8080
+  base_url: false
+  image_proxy: false
+
+search:
+  # JSON format must be listed here for ScrapeGoat's API calls to work.
+  formats:
+    - html
+    - json

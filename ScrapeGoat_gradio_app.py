@@ -25,6 +25,10 @@ OLLAMA_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "llava")
 # locally-installed openai-whisper model.  Leave empty to use local whisper
 # (if installed) or to disable speech transcription entirely.
 WHISPERLIVE_HOST = os.environ.get("WHISPERLIVE_HOST", "")
+# Optional: URL of a running SearXNG instance used as the web search/scraping backend.
+# When set, ScrapeGoat queries SearXNG's JSON API to discover URLs instead of
+# crawling sites directly.  Falls back to proxy-based crawling when empty.
+SEARXNG_HOST = os.environ.get("SEARXNG_HOST", "")
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that answers questions based only on the provided context."
 
 # Path to shared configuration file (persistent across restarts)
@@ -72,6 +76,29 @@ current_settings = {
 # Shared state for the URL Input / QnA tabs
 shared_result = None
 
+def search_with_searxng(query):
+    """Search using SearXNG's JSON API and return a list of result URLs.
+
+    Queries ``SEARXNG_HOST/search?q=<query>&format=json`` and returns the list
+    of result URLs.  Returns an empty list when SEARXNG_HOST is not configured
+    or the request fails.
+    """
+    if not SEARXNG_HOST:
+        return []
+    try:
+        api_url = f"{SEARXNG_HOST.rstrip('/')}/search"
+        response = requests.get(
+            api_url,
+            params={"q": query, "format": "json"},
+            timeout=15,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return [r["url"] for r in data.get("results", []) if r.get("url")]
+    except Exception as exc:
+        logging.warning(f"SearXNG search failed for query '{query}': {exc}")
+        return []
+
 # Proxy init
 def get_proxy():
     print("Starting proxy ...")
@@ -85,7 +112,8 @@ def get_proxy():
     
     return proxy_obj
 
-def scrape_webpages(urls,proxy):
+def scrape_webpages(urls, proxy=None):
+    # proxy may be None when called via SearXNG path; requests.get accepts None gracefully.
     print("Scraping text from webpages from each of the links ...")
     scraped_texts = []
     for url in urls:
@@ -180,20 +208,32 @@ def scrape_site_links(start_url, proxy):
 
 def analyze_website(start_url):
     global shared_result
-    
+
+    # Prefer SearXNG for link discovery when a host is configured.
+    if SEARXNG_HOST:
+        domain = get_domain(start_url)
+        searxng_urls = search_with_searxng(f"site:{domain}")
+        if searxng_urls:
+            print(f"SearXNG returned {len(searxng_urls)} URL(s) for site:{domain}")
+            full_text = scrape_webpages(searxng_urls)
+            shared_result = full_text
+            return "Website Analyzed!"
+        logging.warning(
+            f"SearXNG returned no results for site:{domain}; falling back to direct crawl."
+        )
+
+    # Fall back to proxy-based crawling when SearXNG is unavailable or returns nothing.
     proxy = get_proxy()
-    
+
     # Scrape all the links from the given start URL using the proxy
     all_links = scrape_site_links(start_url, proxy)
 
     # Scrape the content from all the links obtained, using the proxy
     full_text = scrape_webpages(all_links, proxy)
-    
+
     shared_result = full_text
-    
-    txt = "Website Analyzed!"
-    
-    return txt
+
+    return "Website Analyzed!"
 
 def ask_questions(question_text):
     global shared_result
@@ -421,6 +461,17 @@ def handle_flexible_request(text, image, audio):
         scraped_parts = []
         for url in urls:
             try:
+                # Prefer SearXNG for link discovery when configured.
+                if SEARXNG_HOST:
+                    domain = get_domain(url)
+                    searxng_urls = search_with_searxng(f"site:{domain}")
+                    if searxng_urls:
+                        print(f"SearXNG returned {len(searxng_urls)} URL(s) for site:{domain}")
+                        scraped_parts.append(scrape_webpages(searxng_urls))
+                        continue
+                    logging.warning(
+                        f"SearXNG returned no results for site:{domain}; falling back to direct crawl."
+                    )
                 proxy = get_proxy()
                 all_links = scrape_site_links(url, proxy)
                 page_text = scrape_webpages(all_links, proxy)

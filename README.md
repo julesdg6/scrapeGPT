@@ -12,11 +12,11 @@ ScrapeGoat is a Gradio web app (and optional Telegram bot) that scrapes websites
 ## Features
 
 - **Flexible Chat**: A single unified interface that automatically detects the type of input and routes to the correct handler:
-  - **URL in prompt** → scrapes the page(s) and answers using retrieved content
+  - **URL in prompt** → scrapes the page(s) via [SearXNG](https://github.com/searxng/searxng) (or direct proxy crawl as fallback) and answers using retrieved content
   - **Image upload** → analyses the image using a multimodal Ollama model (e.g. `llava`)
   - **Audio upload** → transcribes speech (via [WhisperLive](https://github.com/collabora/WhisperLive) when configured) *or*, if no clear speech is found, analyses the audio as music (BPM, estimated key, spectral centroid via librosa)
   - **Plain text** → answers directly with the configured LLM
-- **Web Scraping**: Automatically scrapes text from provided URLs, including PDF files.
+- **Web Scraping**: Uses [SearXNG](https://github.com/searxng/searxng) as the primary backend for discovering and retrieving web content. Falls back to direct proxy crawling when SearXNG is not configured.
 - **Context Retrieval**: Utilises embeddings and retrieval models to extract relevant context from scraped content.
 - **Question Answering**: Generates answers to user questions based on the retrieved context.
 - **Robots.txt Parsing**: Respects the website's robots.txt to avoid scraping restricted areas.
@@ -31,6 +31,20 @@ ScrapeGoat is a Gradio web app (and optional Telegram bot) that scrapes websites
 | Image analysis | A multimodal Ollama model, e.g. `llava` | `ollama pull llava` then set `OLLAMA_VISION_MODEL=llava` |
 | Speech transcription | [WhisperLive](https://github.com/collabora/WhisperLive) container (`ghcr.io/collabora/whisperlive-gpu:latest`) | Set `WHISPERLIVE_HOST=http://whisperlive:9090` (see below) |
 | Music analysis | librosa + soundfile Python packages | Already in `requirements.txt`; no extra setup required |
+
+---
+
+## Companion Services
+
+ScrapeGoat integrates with several independent Docker services. Each service runs in its own container and is configured via environment variables. You do **not** need all of them — each is optional or can be replaced by an external instance you already have running.
+
+| Service | Image | Purpose | Required? |
+|---|---|---|---|
+| **Ollama** | `ollama/ollama:latest` | Local LLM inference (text, vision) | Yes — or point `OLLAMA_HOST` at an existing instance |
+| **SearXNG** | `searxng/searxng:latest` | Privacy-friendly meta-search engine used as the web scraping backend | Recommended — falls back to direct proxy crawling if absent |
+| **WhisperLive** | `ghcr.io/collabora/whisperlive-gpu:latest` | GPU-accelerated speech transcription | Optional (requires NVIDIA GPU) |
+
+> **Tip for Unraid / existing setups:** If you already run Ollama or SearXNG as standalone containers, simply point ScrapeGoat's `OLLAMA_HOST` / `SEARXNG_HOST` environment variables at those instances. You do not need to install them again via this compose file.
 
 ---
 
@@ -63,12 +77,17 @@ Key variables in `.env`:
 | `GRADIO_PORT` | `7860` | Host port for the Gradio web UI |
 | `TELEGRAM_BOT_TOKEN` | *(empty)* | Telegram token (bot mode only) |
 | `WHISPERLIVE_HOST` | *(empty)* | URL of the WhisperLive service for speech transcription (optional) |
+| `SEARXNG_HOST` | `http://searxng:8080` | URL of the SearXNG search backend (recommended; leave empty to use legacy proxy scraping) |
+| `SEARXNG_PORT` | `8080` | Host port for the bundled SearXNG web UI |
 
 #### 3. Start the stack
 ```bash
 docker compose up -d
 ```
-This starts both **ScrapeGoat** and **Ollama** containers.
+This starts **ScrapeGoat**, **Ollama**, and **SearXNG** containers.
+
+> **Already running Ollama or SearXNG elsewhere?**  
+> Set `OLLAMA_HOST` and/or `SEARXNG_HOST` in your `.env` to point at your existing instances, then remove the corresponding service from the compose file (or just ignore it — it won't affect ScrapeGoat).
 
 #### Optional: Enable GPU speech transcription with WhisperLive
 
@@ -128,6 +147,7 @@ ScrapeGoat includes an Unraid Docker template for easy container configuration. 
 #### Prerequisites
 - Unraid with Docker enabled.
 - An **Ollama** container already running on your Unraid server (install `ollama/ollama` from Community Applications or via the Docker tab).
+- *(Optional but recommended)* A **SearXNG** container running on your Unraid server (install `searxng/searxng` from Community Applications or via the Docker tab).
 
 #### Step-by-step
 
@@ -138,7 +158,11 @@ ScrapeGoat includes an Unraid Docker template for easy container configuration. 
      docker exec -it ollama ollama pull qwen:0.5b
      ```
 
-2. **Add the ScrapeGoat container using the template**:
+2. **Install SearXNG** (recommended — provides the web scraping backend):
+   - In Unraid, go to **Apps** → search for `SearXNG` → install `searxng/searxng`.
+   - No extra configuration is required for basic use; ScrapeGoat's default `SEARXNG_HOST=http://searxng:8080` will connect to it automatically once both containers are on the same Docker network.
+
+3. **Add the ScrapeGoat container using the template**:
    - Open the Unraid terminal (Tools → Terminal) or SSH into your server and download the template:
      ```bash
      wget -O /boot/config/plugins/dockerMan/templates-user/ScrapeGoat.xml \
@@ -154,16 +178,17 @@ ScrapeGoat includes an Unraid Docker template for easy container configuration. 
      | **Ollama Model** | `qwen:0.5b` | Must be pulled into Ollama first |
      | **Ollama Vision Model** | `llava` | For image analysis; must be pulled first: `ollama pull llava` |
      | **WhisperLive Host** | `http://whisperlive:9090` | (Optional) For speech transcription; run `ghcr.io/collabora/whisperlive-gpu:latest` on the same network. Leave empty to disable. |
+     | **SearXNG Host** | `http://searxng:8080` | (Recommended) URL of your SearXNG container. Leave empty to fall back to direct proxy scraping. |
      | **WebUI Port** | `7860` | Host port to access Gradio |
      | **App Data** | `/mnt/user/appdata/scrapegoat` | Stores `db.json` |
      | **Qdrant Vector Store** | `/mnt/user/appdata/scrapegoat/qdrant` | Stores embedding vectors |
 
    - Click **Apply** to start the container. Unraid will pull `ghcr.io/julesdg6/scrapegoat:latest` automatically.
 
-3. **Access the UI**:  
+4. **Access the UI**:  
    Open `http://<unraid-ip>:7860` in your browser.
 
-> **Tip:** Make sure both `scrapegoat` and `ollama` containers are on the same custom Docker network (e.g., `br0` bridge or a custom bridge) so that `http://ollama:11434` resolves correctly. You can set the network for each container in the Docker settings under *Advanced View*.
+> **Tip:** Make sure `scrapegoat`, `ollama`, and `searxng` containers are on the same custom Docker network (e.g., `br0` bridge or a custom bridge) so that the hostnames resolve correctly. You can set the network for each container in the Docker settings under *Advanced View*.
 
 ---
 

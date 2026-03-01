@@ -23,12 +23,17 @@ services:
       # Set to empty in your .env to disable GPU access (e.g. when no NVIDIA GPU is present).
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-all}
+      # SearXNG URL for web search/scraping. Set to http://searxng:8080 when using the
+      # bundled searxng service below. Leave empty to fall back to direct proxy scraping.
+      - SEARXNG_HOST=${SEARXNG_HOST:-http://searxng:8080}
     volumes:
       - scrapegoat_data:/data
       - scrapegoat_qdrant:/app/tmp/local_qdrant
     depends_on:
       ollama:
         condition: service_healthy
+      searxng:
+        condition: service_started
     restart: unless-stopped
 
   ollama:
@@ -44,6 +49,29 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    restart: unless-stopped
+
+  # SearXNG: privacy-friendly meta-search engine used as the scraping/search backend.
+  # Provides a JSON search API that ScrapeGoat queries to discover and retrieve web content.
+  # To run standalone (without Ollama): docker compose up searxng scrapegoat
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - "${SEARXNG_PORT:-8080}:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080/}
+      # Override the default secret key from settings.yml with a value from .env.
+      # Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-please-change-this-secret-key-in-.env}
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
     restart: unless-stopped
 
   # Optional: GPU-accelerated WhisperLive service for speech transcription.
