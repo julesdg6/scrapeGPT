@@ -25,6 +25,7 @@ EXPOSE 7860
 ENV OLLAMA_HOST=http://ollama:11434 \
     OLLAMA_MODEL=qwen:0.5b \
     GRADIO_PORT=7860 \
-    DB_PATH=/data/db.json
+    DB_PATH=/data/db.json \
+    CONFIG_PATH=/data/config.json
 
 CMD ["python", "scrapeGPT_gradio_app.py"]

@@ -23,15 +23,45 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen:0.5b")
 OLLAMA_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "llava")
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that answers questions based only on the provided context."
 
+# Path to shared configuration file (persistent across restarts)
+CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.json")
+
 # Minimum number of words in a Whisper transcript to classify audio as speech
 _SPEECH_WORD_THRESHOLD = 3
 
 # Whisper model – loaded once on first audio request
 _whisper_model = None
 
+
+def _load_config() -> dict:
+    """Load configuration from CONFIG_PATH, returning an empty dict on failure."""
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _save_config(data: dict) -> None:
+    """Persist *data* to CONFIG_PATH, creating parent directories as needed."""
+    config_dir = os.path.dirname(CONFIG_PATH)
+    if config_dir:
+        os.makedirs(config_dir, exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 # Runtime-configurable settings (can be changed via the Settings tab)
+_cfg = _load_config()
+_raw_ids = _cfg.get("allowed_telegram_user_ids", [])
+try:
+    _allowed_ids = [int(uid) for uid in _raw_ids]
+except (ValueError, TypeError):
+    _allowed_ids = []
 current_settings = {
     "system_prompt": DEFAULT_SYSTEM_PROMPT,
+    # List of permitted Telegram user IDs (integers); empty = no restriction
+    "allowed_telegram_user_ids": _allowed_ids,
 }
 
 # Proxy init
@@ -169,6 +199,24 @@ def save_settings(system_prompt):
         return "Error: System Prompt cannot be empty."
     current_settings["system_prompt"] = system_prompt
     return "Settings saved successfully!"
+
+
+def save_user_ids(user_ids_text):
+    """Parse *user_ids_text* (one numeric ID per line) and persist to config."""
+    ids = []
+    for line in user_ids_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ids.append(int(line))
+        except ValueError:
+            return f"Error: '{line}' is not a valid numeric Telegram user ID."
+    current_settings["allowed_telegram_user_ids"] = ids
+    cfg = _load_config()
+    cfg["allowed_telegram_user_ids"] = ids
+    _save_config(cfg)
+    return f"Saved {len(ids)} allowed Telegram user ID(s)."
 
 # ── Flexible chat helpers ──────────────────────────────────────────────────────
 
@@ -393,6 +441,26 @@ with gr.Blocks() as iface3:
         fn=save_settings,
         inputs=system_prompt_input,
         outputs=status_output,
+    )
+
+    gr.Markdown("---")
+    gr.Markdown("### Telegram Access Control")
+    gr.Markdown(
+        "Enter the numeric Telegram User IDs that are permitted to use the bot, **one per line**. "
+        "Leave empty to allow all users (no restriction)."
+    )
+    user_ids_input = gr.Textbox(
+        label="Allowed Telegram User IDs",
+        value="\n".join(str(uid) for uid in current_settings["allowed_telegram_user_ids"]),
+        lines=8,
+        placeholder="123456789\n987654321",
+    )
+    save_users_btn = gr.Button("Save User IDs")
+    users_status_output = gr.Textbox(label="Status", interactive=False)
+    save_users_btn.click(
+        fn=save_user_ids,
+        inputs=user_ids_input,
+        outputs=users_status_output,
     )
 
 # Combine the interfaces into a TabbedInterface

@@ -12,6 +12,23 @@ from datetime import datetime
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 
+# Path to shared configuration file (must match the Gradio app's CONFIG_PATH)
+CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.json")
+
+
+def load_allowed_user_ids() -> list:
+    """Return the list of permitted Telegram user IDs from the config file.
+
+    Returns an empty list when the config file is missing or contains no IDs,
+    which means all users are allowed (backward-compatible default).
+    """
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            data = json.load(f)
+        return [int(uid) for uid in data.get("allowed_telegram_user_ids", [])]
+    except (FileNotFoundError, json.JSONDecodeError, ValueError):
+        return []
+
 # Proxy init
 def get_proxy():
     print("Starting proxy ...")
@@ -265,11 +282,20 @@ state_storage = {}
 
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
+    allowed = load_allowed_user_ids()
+    if allowed and message.from_user.id not in allowed:
+        await message.reply("Sorry, you are not authorized to use this bot.")
+        return
+    # Each user gets their own isolated state entry keyed by chat_id
     state_storage[message.chat.id] = {'state': 'waiting_for_link'}
     await message.reply('Please provide a website URL.')
 
 @dp.message_handler(content_types=types.ContentType.TEXT)
 async def process_message(message: types.Message):
+    allowed = load_allowed_user_ids()
+    if allowed and message.from_user.id not in allowed:
+        await message.reply("Sorry, you are not authorized to use this bot.")
+        return
     chat_id = message.chat.id
     state = state_storage.get(chat_id, {}).get('state')
     
