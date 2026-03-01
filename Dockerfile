@@ -30,8 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy application files
-COPY scrapeGPT_gradio_app.py .
-COPY scrapeGPT.py .
+COPY scrapeGoat_gradio_app.py .
+COPY scrapeGoat.py .
 COPY db.json .
 
 # Persistent data directory
@@ -49,4 +49,4 @@ ENV OLLAMA_HOST=http://ollama:11434 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/')" || exit 1
 
-CMD ["python", "scrapeGPT_gradio_app.py"]
+CMD ["python", "scrapeGoat_gradio_app.py"]

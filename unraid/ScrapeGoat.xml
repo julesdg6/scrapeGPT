@@ -1,18 +1,18 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>ScrapeGPT</Name>
-  <Repository>ghcr.io/julesdg6/scrapegpt:latest</Repository>
+  <Name>ScrapeGoat</Name>
+  <Repository>ghcr.io/julesdg6/scrapegoat:latest</Repository>
   <Registry>https://ghcr.io/</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>bash</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/julesdg6/scrapeGPT/issues</Support>
-  <Project>https://github.com/julesdg6/scrapeGPT</Project>
-  <Overview>ScrapeGPT is a web app that scrapes websites and answers questions about them using a local LLM via Ollama. Provides a Gradio web UI accessible on the configured port. The image is published to GitHub Container Registry and will be pulled automatically when you start the container.</Overview>
+  <Support>https://github.com/julesdg6/ScrapeGoat/issues</Support>
+  <Project>https://github.com/julesdg6/ScrapeGoat</Project>
+  <Overview>ScrapeGoat is a web app that scrapes websites and answers questions about them using a local LLM via Ollama. Provides a Gradio web UI accessible on the configured port. The image is published to GitHub Container Registry and will be pulled automatically when you start the container.</Overview>
   <Category>Tools: MediaApp:Other</Category>
   <WebUI>http://[IP]:[PORT:7860]/</WebUI>
-  <Icon>https://raw.githubusercontent.com/julesdg6/scrapeGPT/main/scrapeGPT.png</Icon>
+  <Icon>https://raw.githubusercontent.com/julesdg6/ScrapeGoat/main/unraid/ScrapeGoat.png</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
@@ -29,10 +29,10 @@
   <Config Name="Ollama Model" Target="OLLAMA_MODEL" Default="qwen:0.5b" Mode="" Description="The Ollama model to use for answering questions. The model must already be pulled inside your Ollama container (run: docker exec -it ollama ollama pull qwen:0.5b)." Type="Variable" Display="always" Required="true" Mask="false">qwen:0.5b</Config>
   <Config Name="Ollama Vision Model" Target="OLLAMA_VISION_MODEL" Default="llava" Mode="" Description="(Optional) The Ollama model to use for image analysis. Must support multimodal input (e.g. llava). Pull it first: docker exec -it ollama ollama pull llava. Leave blank to disable image analysis." Type="Variable" Display="always" Required="false" Mask="false">llava</Config>
   <Config Name="Gradio Port (env)" Target="GRADIO_PORT" Default="7860" Mode="" Description="Internal Gradio server port. Change only if you need a non-default port inside the container." Type="Variable" Display="advanced" Required="false" Mask="false">7860</Config>
-  <Config Name="Telegram Bot Token" Target="TELEGRAM_BOT_TOKEN" Default="" Mode="" Description="(Optional) Telegram Bot API token. Only required when running the Telegram bot (scrapeGPT.py) instead of the Gradio app." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Telegram Bot Token" Target="TELEGRAM_BOT_TOKEN" Default="" Mode="" Description="(Optional) Telegram Bot API token. Only required when running the Telegram bot (scrapeGoat.py) instead of the Gradio app." Type="Variable" Display="advanced" Required="false" Mask="true"/>
   <Config Name="WhisperLive Host" Target="WHISPERLIVE_HOST" Default="" Mode="" Description="(Optional) URL of a running WhisperLive service for GPU-accelerated speech transcription, e.g. http://whisperlive:9090. Use ghcr.io/collabora/whisperlive-gpu:latest as the WhisperLive container image. Leave empty to disable speech transcription (music analysis still works without it)." Type="Variable" Display="always" Required="false" Mask="false"/>
 
   <!-- Persistent volumes -->
-  <Config Name="App Data" Target="/data" Default="/mnt/user/appdata/scrapegpt" Mode="rw" Description="Persistent storage for scraped content database (db.json)." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/scrapegpt</Config>
-  <Config Name="Qdrant Vector Store" Target="/app/tmp/local_qdrant" Default="/mnt/user/appdata/scrapegpt/qdrant" Mode="rw" Description="Persistent storage for the local Qdrant vector database used for embeddings." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/scrapegpt/qdrant</Config>
+  <Config Name="App Data" Target="/data" Default="/mnt/user/appdata/scrapegoat" Mode="rw" Description="Persistent storage for scraped content database (db.json)." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/scrapegoat</Config>
+  <Config Name="Qdrant Vector Store" Target="/app/tmp/local_qdrant" Default="/mnt/user/appdata/scrapegoat/qdrant" Mode="rw" Description="Persistent storage for the local Qdrant vector database used for embeddings." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/scrapegoat/qdrant</Config>
 </Container>

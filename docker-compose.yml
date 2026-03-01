@@ -1,27 +1,27 @@
 services:
-  scrapegpt:
+  scrapegoat:
     build:
       context: .
       args:
         # Set PYTORCH_FLAVOR=cu121 (or cu118, etc.) in your .env for NVIDIA GPU support.
         # Leave unset or 'cpu' for a smaller CPU-only image (~1.5 GB lighter).
         PYTORCH_FLAVOR: ${PYTORCH_FLAVOR:-cpu}
-    image: scrapegpt:latest
-    container_name: scrapegpt
+    image: scrapegoat:latest
+    container_name: scrapegoat
     ports:
       - "${GRADIO_PORT:-7860}:7860"
     environment:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen:0.5b}
-      # TELEGRAM_BOT_TOKEN is only needed if you override CMD to run scrapeGPT.py (Telegram bot)
+      # TELEGRAM_BOT_TOKEN is only needed if you override CMD to run scrapeGoat.py (Telegram bot)
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       # Optional: set to http://whisperlive:9090 to enable speech transcription via WhisperLive.
       # Leave empty (default) to disable speech transcription or to use a locally-installed
       # openai-whisper package.
       - WHISPERLIVE_HOST=${WHISPERLIVE_HOST:-}
     volumes:
-      - scrapegpt_data:/data
-      - scrapegpt_qdrant:/app/tmp/local_qdrant
+      - scrapegoat_data:/data
+      - scrapegoat_qdrant:/app/tmp/local_qdrant
     depends_on:
       ollama:
         condition: service_healthy
@@ -61,6 +61,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  scrapegpt_data:
-  scrapegpt_qdrant:
+  scrapegoat_data:
+  scrapegoat_qdrant:
   ollama_data:
