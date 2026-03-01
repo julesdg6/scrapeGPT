@@ -2,21 +2,19 @@ import gradio as gr
 import os
 import time
 import base64
-import requests, json, re, ollama, logging
+import requests, json, re, ollama
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from fp.fp import FreeProxy
 from PyPDF2 import PdfReader
 from io import BytesIO
 from langchain_community.vectorstores import Qdrant
-from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
 from langchain_community.chat_models import ChatOllama
 from langchain.prompts import ChatPromptTemplate
-from langchain.pydantic_v1 import BaseModel
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnableParallel, RunnablePassthrough
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import GPT4AllEmbeddings, HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen:0.5b")
