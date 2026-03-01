@@ -26,6 +26,14 @@ services:
       # SearXNG URL for web search/scraping. Set to http://searxng:8080 when using the
       # bundled searxng service below. Leave empty to fall back to direct proxy scraping.
       - SEARXNG_HOST=${SEARXNG_HOST:-http://searxng:8080}
+      # Automatic1111 (stable-diffusion-webui) API for optional image generation.
+      # Set A1111_HOST to enable the Image Generation tab, e.g. http://a1111
+      - A1111_HOST=${A1111_HOST:-}
+      - A1111_PORT=${A1111_PORT:-7860}
+      # Leave blank to use whatever model is currently loaded in A1111.
+      - A1111_MODEL=${A1111_MODEL:-}
+      - A1111_WIDTH=${A1111_WIDTH:-256}
+      - A1111_HEIGHT=${A1111_HEIGHT:-256}
     volumes:
       - scrapegoat_data:/data
       - scrapegoat_qdrant:/app/tmp/local_qdrant

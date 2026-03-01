@@ -6,12 +6,15 @@ from PyPDF2 import PdfReader
 from io import BytesIO
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import Qdrant
 from datetime import datetime
 from aiogram import Bot, Dispatcher, executor, types
 
 # Path to shared configuration file (must match the Gradio app's CONFIG_PATH)
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.json")
+
+# Path to scraped content database JSON (shared with Docker / Unraid volume mounts)
+DB_PATH = os.environ.get("DB_PATH", "db.json")
 
 # Optional: URL of a running SearXNG instance used as the web search/scraping backend.
 # When set, ScrapeGoat queries SearXNG's JSON API to discover URLs instead of
@@ -72,7 +75,7 @@ def save_to_db(text, url):
     timestamp = datetime.now().isoformat()
     # Load existing data from db.json
     try:
-        with open('db.json', 'r') as f:
+        with open(DB_PATH, 'r') as f:
             data = json.load(f)
     except FileNotFoundError:
         data = []
@@ -85,7 +88,7 @@ def save_to_db(text, url):
     data.append(new_entry)
 
     # Write data back to db.json
-    with open('db.json', 'w') as f:
+    with open(DB_PATH, 'w') as f:
         json.dump(data, f, indent=4)
 
 
@@ -95,10 +98,15 @@ def get_context(question,text,chunk_size=500,chunk_overlap=100):
     all_scraped_text = text
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,chunk_overlap=chunk_overlap)
-    documents = text_splitter.split_text(all_scraped_text)
-    embeddings = HuggingFaceEmbeddings(model_name = 'sentence-transformers/all-MiniLM-L6-v2')
-    db = Chroma.from_texts(documents, embedding=embeddings)
-    retriever = db.as_retriever(search_kwargs={"k": 3})
+    documents = text_splitter.create_documents([all_scraped_text])
+    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+    qdrant = Qdrant.from_documents(
+        documents=documents,
+        embedding=embeddings,
+        path=os.environ.get("QDRANT_PATH", "./tmp/local_qdrant"),
+        collection_name="telegram_data",
+    )
+    retriever = qdrant.as_retriever(search_kwargs={"k": 3})
     
     context = retriever.get_relevant_documents(question)
     
@@ -210,16 +218,19 @@ def generate_answer_local(question,context):
     Question: {question}
     Helpful Answer:"""
 
-    response = ollama.chat(model=os.environ.get('OLLAMA_MODEL', 'qwen:0.5b'), messages=[
-        
-        {
-            'role': 'system',
-            'content': 'You are a question answering AI Bot that uses context from the user prompt to answer the question.',
-            
-            'role': 'user',
-            'content': prompt,
+    response = ollama.chat(
+        model=os.environ.get('OLLAMA_MODEL', 'qwen:0.5b'),
+        messages=[
+            {
+                'role': 'system',
+                'content': 'You are a question answering AI Bot that uses context from the user prompt to answer the question.',
             },
-        ])
+            {
+                'role': 'user',
+                'content': prompt,
+            },
+        ],
+    )
     
     output = response['message']['content']
     
@@ -273,8 +284,13 @@ def generate_answer_pplx(question,context):
 
 def analyze_website(start_url):
 
-    with open('db.json', 'r') as file:
-        data = json.load(file)
+    try:
+        with open(DB_PATH, 'r') as file:
+            data = json.load(file)
+        if not isinstance(data, list):
+            data = []
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
 
     for entry in data:
         if start_url in entry['start_url']: # ADD check for today's scraped website data, not longer

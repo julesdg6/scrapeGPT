@@ -44,7 +44,12 @@ ENV OLLAMA_HOST=http://ollama:11434 \
     GRADIO_PORT=7860 \
     DB_PATH=/data/db.json \
     CONFIG_PATH=/data/config.json \
-    WHISPERLIVE_HOST=
+    WHISPERLIVE_HOST= \
+    A1111_HOST= \
+    A1111_PORT=7860 \
+    A1111_MODEL= \
+    A1111_WIDTH=256 \
+    A1111_HEIGHT=256
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/')" || exit 1

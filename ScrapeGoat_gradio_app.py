@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlparse
 from fp.fp import FreeProxy
 from PyPDF2 import PdfReader
 from io import BytesIO
+from PIL import Image
 from langchain_community.vectorstores import Qdrant
 from langchain_community.chat_models import ChatOllama
 from langchain.prompts import ChatPromptTemplate
@@ -31,6 +32,12 @@ WHISPERLIVE_HOST = os.environ.get("WHISPERLIVE_HOST", "")
 SEARXNG_HOST = os.environ.get("SEARXNG_HOST", "")
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that answers questions based only on the provided context."
 
+# Optional: Automatic1111 (stable-diffusion-webui) API for image generation.
+# Configure A1111_HOST to enable the Image Generation tab.
+A1111_HOST = os.environ.get("A1111_HOST", "")
+A1111_PORT = os.environ.get("A1111_PORT", "7860")
+A1111_MODEL = os.environ.get("A1111_MODEL", "")
+
 # Path to shared configuration file (persistent across restarts)
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.json")
 
@@ -40,6 +47,85 @@ _SPEECH_WORD_THRESHOLD = 3
 # Local Whisper model – loaded once on first audio request (only used when
 # WHISPERLIVE_HOST is not configured and openai-whisper is installed)
 _whisper_model = None
+
+
+def _get_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logging.warning(f"Invalid {name}={raw!r}; using default {default}.")
+        return default
+
+
+def _get_a1111_base_url() -> str:
+    """Return the base URL for the A1111 API or an empty string when disabled."""
+    if not A1111_HOST:
+        return ""
+    host = A1111_HOST.rstrip("/")
+    if not re.match(r"^https?://", host):
+        host = f"http://{host}"
+    parsed = urlparse(host)
+    if parsed.port is None and A1111_PORT:
+        return f"{parsed.scheme}://{parsed.hostname}:{A1111_PORT}"
+    return host
+
+
+def generate_image_a1111(prompt: str, negative_prompt: str = ""):
+    """Generate an image via A1111's txt2img API."""
+    prompt = (prompt or "").strip()
+    if not prompt:
+        return None, "Please enter a prompt."
+
+    base_url = _get_a1111_base_url()
+    if not base_url:
+        return (
+            None,
+            "A1111 image generation is not configured. Set A1111_HOST (and A1111_PORT) to enable it.",
+        )
+
+    width = _get_int_env("A1111_WIDTH", 256)
+    height = _get_int_env("A1111_HEIGHT", 256)
+
+    payload = {
+        "prompt": prompt,
+        "negative_prompt": (negative_prompt or "").strip(),
+        "width": width,
+        "height": height,
+    }
+    if A1111_MODEL:
+        payload["override_settings"] = {"sd_model_checkpoint": A1111_MODEL}
+        payload["override_settings_restore_afterwards"] = True
+
+    try:
+        resp = requests.post(
+            f"{base_url}/sdapi/v1/txt2img",
+            json=payload,
+            timeout=180,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as exc:
+        return None, f"A1111 request failed: {exc}"
+
+    images = data.get("images") or []
+    if not images:
+        return None, "A1111 returned no images."
+
+    img_b64 = images[0]
+    if "," in img_b64:
+        img_b64 = img_b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(img_b64)
+        img = Image.open(BytesIO(img_bytes)).convert("RGB")
+    except Exception as exc:
+        return None, f"Could not decode A1111 image: {exc}"
+
+    model_note = f" (model: {A1111_MODEL})" if A1111_MODEL else ""
+    return img, f"Generated {width}x{height}{model_note} via {base_url}"
 
 
 def _load_config() -> dict:
@@ -68,7 +154,7 @@ try:
 except (ValueError, TypeError):
     _allowed_ids = []
 current_settings = {
-    "system_prompt": DEFAULT_SYSTEM_PROMPT,
+    "system_prompt": (_cfg.get("system_prompt") or "").strip() or DEFAULT_SYSTEM_PROMPT,
     # List of permitted Telegram user IDs (integers); empty = no restriction
     "allowed_telegram_user_ids": _allowed_ids,
 }
@@ -247,6 +333,9 @@ def save_settings(system_prompt):
     if not system_prompt:
         return "Error: System Prompt cannot be empty."
     current_settings["system_prompt"] = system_prompt
+    cfg = _load_config()
+    cfg["system_prompt"] = system_prompt
+    _save_config(cfg)
     return "Settings saved successfully!"
 
 
@@ -559,6 +648,32 @@ with gr.Blocks() as iface_chat:
         outputs=chat_output,
     )
 
+with gr.Blocks() as iface_imggen:
+    gr.Markdown("## Image Generation (A1111)")
+    gr.Markdown(
+        "Generate images via an Automatic1111 (stable-diffusion-webui) instance. "
+        "Your A1111 container must be started with the `--api` flag, and ScrapeGoat must be configured "
+        "with `A1111_HOST` / `A1111_PORT`."
+    )
+    img_prompt_input = gr.Textbox(
+        label="Prompt",
+        placeholder="A cyberpunk goat, 35mm photo, dramatic lighting",
+        lines=3,
+    )
+    img_negative_prompt_input = gr.Textbox(
+        label="Negative prompt (optional)",
+        placeholder="blurry, lowres, watermark",
+        lines=2,
+    )
+    img_generate_btn = gr.Button("Generate", variant="primary")
+    img_output = gr.Image(label="Generated Image", interactive=False)
+    img_status_output = gr.Textbox(label="Status", interactive=False)
+    img_generate_btn.click(
+        fn=generate_image_a1111,
+        inputs=[img_prompt_input, img_negative_prompt_input],
+        outputs=[img_output, img_status_output],
+    )
+
 with gr.Blocks() as iface3:
     gr.Markdown("## Settings")
     gr.Markdown("Configure the system prompt used when answering questions.")
@@ -598,8 +713,8 @@ with gr.Blocks() as iface3:
 
 # Combine the interfaces into a TabbedInterface
 tabbed_interface = gr.TabbedInterface(
-    [iface_chat, iface1, iface2, iface3],
-    ["Flexible Chat", "URL Input", "QnA with Website", "Settings"],
+    [iface_chat, iface_imggen, iface1, iface2, iface3],
+    ["Flexible Chat", "Image Generation", "URL Input", "QnA with Website", "Settings"],
     title="ScrapeGoat",
 )
 

@@ -23,12 +23,14 @@ ScrapeGoat is a Gradio web app (and optional Telegram bot) that scrapes websites
 - **Database Management**: Stores scraped content in a database for future reference and quick access.
 - **Proxy Support**: Uses rotating proxies to bypass geo-restrictions and anonymise requests.
 - **LLM-based**: Connects to a local [Ollama](https://ollama.com) instance (including Ollama running in another container).
+- **Image generation (optional)**: Generates images via an Automatic1111 (stable-diffusion-webui) instance using its `--api` HTTP API.
 
 ### Additional models required for new features
 
 | Feature | Required model / package | How to enable |
 |---|---|---|
 | Image analysis | A multimodal Ollama model, e.g. `llava` | `ollama pull llava` then set `OLLAMA_VISION_MODEL=llava` |
+| Image generation | Automatic1111 (stable-diffusion-webui) with `--api` enabled | Set `A1111_HOST` / `A1111_PORT` (see below) |
 | Speech transcription | [WhisperLive](https://github.com/collabora/WhisperLive) container (`ghcr.io/collabora/whisperlive-gpu:latest`) | Set `WHISPERLIVE_HOST=http://whisperlive:9090` (see below) |
 | Music analysis | librosa + soundfile Python packages | Already in `requirements.txt`; no extra setup required |
 
@@ -79,6 +81,11 @@ Key variables in `.env`:
 | `WHISPERLIVE_HOST` | *(empty)* | URL of the WhisperLive service for speech transcription (optional) |
 | `SEARXNG_HOST` | `http://searxng:8080` | URL of the SearXNG search backend (recommended; leave empty to use legacy proxy scraping) |
 | `SEARXNG_PORT` | `8080` | Host port for the bundled SearXNG web UI |
+| `A1111_HOST` | *(empty)* | Automatic1111 base URL (host) for image generation (enables Image Generation tab) |
+| `A1111_PORT` | `7860` | Automatic1111 API/web UI port |
+| `A1111_MODEL` | *(empty)* | Optional checkpoint name (leave empty to use currently loaded model) |
+| `A1111_WIDTH` | `256` | Generated image width |
+| `A1111_HEIGHT` | `256` | Generated image height |
 
 #### 3. Start the stack
 ```bash
@@ -102,6 +109,20 @@ docker compose --profile whisper up -d
 ```
 
 The WhisperLive service uses `ghcr.io/collabora/whisperlive-gpu:latest` and requires an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed.  If speech transcription is not needed, leave `WHISPERLIVE_HOST` empty — audio uploads will still be analysed for music features (BPM, key, etc.).
+
+#### Optional: Enable image generation with Automatic1111 (A1111)
+
+Start your Automatic1111 (stable-diffusion-webui) container with the `--api` flag enabled, then set:
+
+```bash
+# In your .env:
+A1111_HOST=http://a1111
+A1111_PORT=7860
+# Optional:
+A1111_MODEL=
+A1111_WIDTH=256
+A1111_HEIGHT=256
+```
 
 #### 4. Pull the Ollama model
 ```bash
@@ -187,6 +208,10 @@ ScrapeGoat includes an Unraid Docker template for easy container configuration. 
      | **Ollama Vision Model** | `llava` | For image analysis; must be pulled first: `ollama pull llava` |
      | **WhisperLive Host** | `http://whisperlive:9090` | (Optional) For speech transcription; run `ghcr.io/collabora/whisperlive-gpu:latest` on the same network. Leave empty to disable. |
      | **SearXNG Host** | `http://searxng:8080` | (Recommended) URL of your SearXNG container. Leave empty to fall back to direct proxy scraping. |
+     | **A1111 Host** | `http://a1111` | (Optional) Enables Image Generation tab (A1111 must run with `--api`) |
+     | **A1111 Port** | `7860` | (Optional) Automatic1111 API/web UI port |
+     | **A1111 Default Model** | *(empty)* | (Optional) Leave blank to use the currently loaded model |
+     | **A1111 Resolution** | `256x256` | (Optional) Image generation width/height |
      | **WebUI Port** | `7860` | Host port to access Gradio |
      | **App Data** | `/mnt/user/appdata/scrapegoat` | Stores `db.json` |
      | **Qdrant Vector Store** | `/mnt/user/appdata/scrapegoat/qdrant` | Stores embedding vectors |
@@ -223,12 +248,12 @@ ollama pull qwen:0.5b
    ```
 4. Run the Gradio app:
 ```bash
-python ScrapeGoat_gradio_app.py
+python3 ScrapeGoat_gradio_app.py
 ```
 Or the Telegram bot (set `TELEGRAM_BOT_TOKEN` env var first):
 ```bash
 export TELEGRAM_BOT_TOKEN=your_token_here
-python ScrapeGoat.py
+python3 ScrapeGoat.py
 ```
 
 ---
@@ -243,11 +268,12 @@ python ScrapeGoat.py
    - Upload an image to analyse it (requires a vision model such as `llava`).
    - Upload an audio file to transcribe speech or analyse music (BPM, key, etc.).
 3. The **URL Input** / **QnA with Website** tabs remain available for the original two-step workflow.
-4. Use the **Settings** tab to customise the system prompt.
+4. Use the **Image Generation** tab to generate images (requires `A1111_HOST` / `A1111_PORT`).
+5. Use the **Settings** tab to customise the system prompt.
 
 ### Telegram Bot
 1. Set up your bot via [BotFather](https://core.telegram.org/bots#botfather) and copy the token into `TELEGRAM_BOT_TOKEN`.
-2. Run `python ScrapeGoat.py`.
+2. Run `python3 ScrapeGoat.py`.
 3. Send `/start` in Telegram, provide a URL, then ask questions.
 
 ---
@@ -274,4 +300,3 @@ If you have any questions or suggestions, feel free to open an issue on GitHub.
 - It is the end user's responsibility to obey all applicable local, state and federal laws.
 - Developers of this software assume no liability and are not responsible for any misuse or damage caused by this program
 by third parties using the software in violation of laws and regulations.
-

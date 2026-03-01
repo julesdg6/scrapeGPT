@@ -19,7 +19,7 @@
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Requires>Ollama container (e.g., ollama/ollama) must be running and accessible at the configured OLLAMA_HOST URL. Optionally, a SearXNG container (searxng/searxng) provides an improved web scraping backend via the SEARXNG_HOST variable.</Requires>
+  <Requires>Ollama container (e.g., ollama/ollama) must be running and accessible at the configured OLLAMA_HOST URL. Optionally, a SearXNG container (searxng/searxng) provides an improved web scraping backend via the SEARXNG_HOST variable. Optionally, an Automatic1111 (stable-diffusion-webui) container can be used for image generation via A1111_HOST / A1111_PORT (A1111 must be started with --api).</Requires>
 
   <!-- Port mapping for Gradio web UI -->
   <Config Name="WebUI Port" Target="7860" Default="7860" Mode="tcp" Description="Port for the Gradio web interface." Type="Port" Display="always" Required="true" Mask="false">7860</Config>
@@ -34,6 +34,11 @@
   <Config Name="NVIDIA Visible Devices" Target="NVIDIA_VISIBLE_DEVICES" Default="all" Mode="" Description="(Optional) NVIDIA GPU visibility for the container. Set to 'all' (default) to expose all GPUs when the NVIDIA Container Toolkit is installed. Leave empty to disable GPU access when no NVIDIA GPU is present." Type="Variable" Display="always" Required="false" Mask="false">all</Config>
   <Config Name="NVIDIA Driver Capabilities" Target="NVIDIA_DRIVER_CAPABILITIES" Default="all" Mode="" Description="(Optional) NVIDIA driver capabilities exposed to the container. Set to 'all' (default) to enable all capabilities. Leave empty when no NVIDIA GPU is present." Type="Variable" Display="always" Required="false" Mask="false">all</Config>
   <Config Name="SearXNG Host" Target="SEARXNG_HOST" Default="" Mode="" Description="(Optional) URL of a running SearXNG instance used as the web search/scraping backend, e.g. http://searxng:8080. Use searxng/searxng:latest as the SearXNG container image. Leave empty to fall back to direct proxy scraping." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="A1111 Host" Target="A1111_HOST" Default="" Mode="" Description="(Optional) Base URL of your Automatic1111 (stable-diffusion-webui) instance (no path). A1111 must be started with --api. Example: http://a1111 or http://192.168.1.50" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="A1111 Port" Target="A1111_PORT" Default="7860" Mode="" Description="(Optional) Port for the A1111 API/web UI (default 7860)." Type="Variable" Display="always" Required="false" Mask="false">7860</Config>
+  <Config Name="A1111 Default Model" Target="A1111_MODEL" Default="" Mode="" Description="(Optional) Default A1111 checkpoint name to use for generation. Leave blank to use the currently loaded model." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="A1111 Width" Target="A1111_WIDTH" Default="256" Mode="" Description="(Optional) Image generation width (default 256)." Type="Variable" Display="advanced" Required="false" Mask="false">256</Config>
+  <Config Name="A1111 Height" Target="A1111_HEIGHT" Default="256" Mode="" Description="(Optional) Image generation height (default 256)." Type="Variable" Display="advanced" Required="false" Mask="false">256</Config>
 
   <!-- Persistent volumes -->
   <Config Name="App Data" Target="/data" Default="/mnt/user/appdata/scrapegoat" Mode="rw" Description="Persistent storage for scraped content database (db.json)." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/scrapegoat</Config>
