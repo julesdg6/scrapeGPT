@@ -19,6 +19,12 @@ from langchain_community.embeddings import GPT4AllEmbeddings, HuggingFaceEmbeddi
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen:0.5b")
+DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that answers questions based only on the provided context."
+
+# Runtime-configurable settings (can be changed via the Settings tab)
+current_settings = {
+    "system_prompt": DEFAULT_SYSTEM_PROMPT,
+}
 
 # Proxy init
 def get_proxy():
@@ -160,15 +166,15 @@ def ask_questions(question_text):
         )
         retriever = qdrant.as_retriever()
         
-        template = """Answer the question based only on the following context:
-        {context}
+        template = f"""{current_settings["system_prompt"]}
 
-        Question: {question}
-        """
+Context: {{context}}
+
+Question: {{question}}
+"""
         prompt = ChatPromptTemplate.from_template(template)
         
-        ollama_llm = OLLAMA_MODEL
-        model = ChatOllama(model=ollama_llm, base_url=OLLAMA_HOST)
+        model = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_HOST)
         
         chain = (
             RunnableParallel({"context": retriever, "question": RunnablePassthrough()})
@@ -184,12 +190,36 @@ def ask_questions(question_text):
         result = chain.invoke(question_text)
         return result
 
+def save_settings(system_prompt):
+    system_prompt = system_prompt.strip()
+    if not system_prompt:
+        return "Error: System Prompt cannot be empty."
+    current_settings["system_prompt"] = system_prompt
+    return "Settings saved successfully!"
+
 # Create the interfaces for each task
 iface1 = gr.Interface(fn=analyze_website, inputs="text", outputs="text",title="Enter website URL")
 iface2 = gr.Interface(fn=ask_questions, inputs="text", outputs="text",title="Ask questions to the website")
 
+with gr.Blocks() as iface3:
+    gr.Markdown("## Settings")
+    gr.Markdown("Configure the system prompt used when answering questions.")
+    system_prompt_input = gr.Textbox(
+        label="System Prompt",
+        value=current_settings["system_prompt"],
+        lines=5,
+        placeholder="Enter the system prompt for the LLM...",
+    )
+    save_btn = gr.Button("Save Settings")
+    status_output = gr.Textbox(label="Status", interactive=False)
+    save_btn.click(
+        fn=save_settings,
+        inputs=system_prompt_input,
+        outputs=status_output,
+    )
+
 # Combine the interfaces into a TabbedInterface
-tabbed_interface = gr.TabbedInterface([iface1, iface2], ["URL Input", "QnA with Website"])
+tabbed_interface = gr.TabbedInterface([iface1, iface2, iface3], ["URL Input", "QnA with Website", "Settings"])
 
 # Launch the combined interface
 tabbed_interface.launch(server_name="0.0.0.0", server_port=int(os.environ.get("GRADIO_PORT", 7860)))
