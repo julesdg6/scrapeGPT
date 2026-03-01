@@ -1,6 +1,11 @@
 services:
   scrapegpt:
-    build: .
+    build:
+      context: .
+      args:
+        # Set PYTORCH_FLAVOR=cu121 (or cu118, etc.) in your .env for NVIDIA GPU support.
+        # Leave unset or 'cpu' for a smaller CPU-only image (~1.5 GB lighter).
+        PYTORCH_FLAVOR: ${PYTORCH_FLAVOR:-cpu}
     image: scrapegpt:latest
     container_name: scrapegpt
     ports:
