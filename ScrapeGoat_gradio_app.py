@@ -498,8 +498,34 @@ def handle_flexible_request(text, image, audio):
         return f"LLM error: {exc}"
 
 # Create the interfaces for each task
-iface1 = gr.Interface(fn=analyze_website, inputs="text", outputs="text",title="Enter website URL")
-iface2 = gr.Interface(fn=ask_questions, inputs="text", outputs="text",title="Ask questions to the website")
+with gr.Blocks() as iface1:
+    gr.Markdown("## URL Input")
+    gr.Markdown(
+        "Enter a website URL below and click **Analyze** to scrape and index the site's content. "
+        "Once analysis is complete, switch to the **QnA with Website** tab to ask questions."
+    )
+    url_input = gr.Textbox(
+        label="Website URL",
+        placeholder="https://example.com",
+        lines=1,
+    )
+    analyze_btn = gr.Button("Analyze", variant="primary")
+    url_output = gr.Textbox(label="Status", interactive=False)
+    analyze_btn.click(fn=analyze_website, inputs=url_input, outputs=url_output)
+
+with gr.Blocks() as iface2:
+    gr.Markdown("## QnA with Website")
+    gr.Markdown(
+        "Type a question about the website you analyzed in the **URL Input** tab and click **Ask**."
+    )
+    question_input = gr.Textbox(
+        label="Your Question",
+        placeholder="What is this website about?",
+        lines=2,
+    )
+    ask_btn = gr.Button("Ask", variant="primary")
+    answer_output = gr.Textbox(label="Answer", lines=8, interactive=False)
+    ask_btn.click(fn=ask_questions, inputs=question_input, outputs=answer_output)
 
 with gr.Blocks() as iface_chat:
     gr.Markdown("## Flexible Chat")
@@ -576,6 +602,7 @@ with gr.Blocks() as iface3:
 tabbed_interface = gr.TabbedInterface(
     [iface_chat, iface1, iface2, iface3],
     ["Flexible Chat", "URL Input", "QnA with Website", "Settings"],
+    title="ScrapeGoat",
 )
 
 # Launch the combined interface
