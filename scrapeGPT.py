@@ -165,7 +165,7 @@ def generate_answer_local(question,context):
     Question: {question}
     Helpful Answer:"""
 
-    response = ollama.chat(model='qwen:1.8b', messages=[
+    response = ollama.chat(model=os.environ.get('OLLAMA_MODEL', 'qwen:0.5b'), messages=[
         
         {
             'role': 'system',
@@ -251,8 +251,10 @@ def analyze_website(start_url):
     
     return all_scraped_texts
 
-# Replace with your actual bot token
-API_TOKEN = ""
+# Replace with your actual bot token, or set the TELEGRAM_BOT_TOKEN environment variable
+API_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+if not API_TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is required to run the Telegram bot.")
 
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)

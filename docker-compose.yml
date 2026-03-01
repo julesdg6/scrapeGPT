@@ -1,0 +1,39 @@
+services:
+  scrapegpt:
+    build: .
+    image: scrapegpt:latest
+    container_name: scrapegpt
+    ports:
+      - "${GRADIO_PORT:-7860}:7860"
+    environment:
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen:0.5b}
+      # TELEGRAM_BOT_TOKEN is only needed if you override CMD to run scrapeGPT.py (Telegram bot)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+    volumes:
+      - scrapegpt_data:/data
+      - scrapegpt_qdrant:/app/tmp/local_qdrant
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  scrapegpt_data:
+  scrapegpt_qdrant:
+  ollama_data:

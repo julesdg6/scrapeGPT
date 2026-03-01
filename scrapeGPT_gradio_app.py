@@ -1,7 +1,7 @@
 import gradio as gr
 import os
 import time
-import requests, json, os, re, ollama, time, logging
+import requests, json, re, ollama, logging
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from fp.fp import FreeProxy
@@ -16,6 +16,9 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnableParallel, RunnablePassthrough
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import GPT4AllEmbeddings, HuggingFaceEmbeddings
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen:0.5b")
 
 # Proxy init
 def get_proxy():
@@ -164,8 +167,8 @@ def ask_questions(question_text):
         """
         prompt = ChatPromptTemplate.from_template(template)
         
-        ollama_llm = "qwen:0.5b"
-        model = ChatOllama(model=ollama_llm)
+        ollama_llm = OLLAMA_MODEL
+        model = ChatOllama(model=ollama_llm, base_url=OLLAMA_HOST)
         
         chain = (
             RunnableParallel({"context": retriever, "question": RunnablePassthrough()})
@@ -189,4 +192,4 @@ iface2 = gr.Interface(fn=ask_questions, inputs="text", outputs="text",title="Ask
 tabbed_interface = gr.TabbedInterface([iface1, iface2], ["URL Input", "QnA with Website"])
 
 # Launch the combined interface
-tabbed_interface.launch()
+tabbed_interface.launch(server_name="0.0.0.0", server_port=int(os.environ.get("GRADIO_PORT", 7860)))
