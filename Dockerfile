@@ -6,7 +6,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    ffmpeg \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Ensure pip build tools are up to date (required by openai-whisper's pyproject.toml build)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy and install Python dependencies first (layer caching)
 COPY requirements.txt .
