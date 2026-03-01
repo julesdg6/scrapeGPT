@@ -9,13 +9,26 @@ ScrapeGPT is a Gradio web app (and optional Telegram bot) that scrapes websites 
 
 ## Features
 
+- **Flexible Chat**: A single unified interface that automatically detects the type of input and routes to the correct handler:
+  - **URL in prompt** → scrapes the page(s) and answers using retrieved content
+  - **Image upload** → analyses the image using a multimodal Ollama model (e.g. `llava`)
+  - **Audio upload** → transcribes speech (OpenAI Whisper) *or*, if no clear speech is found, analyses the audio as music (BPM, estimated key, spectral centroid via librosa)
+  - **Plain text** → answers directly with the configured LLM
 - **Web Scraping**: Automatically scrapes text from provided URLs, including PDF files.
-- **Context Retrieval**: Utilizes embeddings and retrieval models to extract relevant context from scraped content.
+- **Context Retrieval**: Utilises embeddings and retrieval models to extract relevant context from scraped content.
 - **Question Answering**: Generates answers to user questions based on the retrieved context.
-- **Robots.txt Parsing**: Respects website's robots.txt to avoid scraping restricted areas.
+- **Robots.txt Parsing**: Respects the website's robots.txt to avoid scraping restricted areas.
 - **Database Management**: Stores scraped content in a database for future reference and quick access.
-- **Proxy Support**: Uses rotating proxies to bypass geo-restrictions and anonymize requests.
+- **Proxy Support**: Uses rotating proxies to bypass geo-restrictions and anonymise requests.
 - **LLM-based**: Connects to a local [Ollama](https://ollama.com) instance (including Ollama running in another container).
+
+### Additional models required for new features
+
+| Feature | Required model / package | How to enable |
+|---|---|---|
+| Image analysis | A multimodal Ollama model, e.g. `llava` | `ollama pull llava` then set `OLLAMA_VISION_MODEL=llava` |
+| Speech transcription | OpenAI Whisper (`openai-whisper` Python package) | Already in `requirements.txt`; Whisper downloads its weights on first use |
+| Music analysis | librosa + soundfile Python packages | Already in `requirements.txt`; no extra setup required |
 
 ---
 
@@ -44,6 +57,7 @@ Key variables in `.env`:
 |---|---|---|
 | `OLLAMA_HOST` | `http://ollama:11434` | URL of the Ollama API |
 | `OLLAMA_MODEL` | `qwen:0.5b` | Ollama model name |
+| `OLLAMA_VISION_MODEL` | `llava` | Ollama vision model for image analysis (pull first) |
 | `GRADIO_PORT` | `7860` | Host port for the Gradio web UI |
 | `TELEGRAM_BOT_TOKEN` | *(empty)* | Telegram token (bot mode only) |
 
@@ -121,6 +135,7 @@ ScrapeGPT includes an [Unraid Community Applications](https://unraid.net/communi
      |---|---|---|
      | **Ollama Host** | `http://ollama:11434` | Use container name if on same Docker network; otherwise use your server IP, e.g. `http://192.168.1.100:11434` |
      | **Ollama Model** | `qwen:0.5b` | Must be pulled into Ollama first |
+     | **Ollama Vision Model** | `llava` | For image analysis; must be pulled first: `ollama pull llava` |
      | **WebUI Port** | `7860` | Host port to access Gradio |
      | **App Data** | `/mnt/user/appdata/scrapegpt` | Stores `db.json` |
      | **Qdrant Vector Store** | `/mnt/user/appdata/scrapegpt/qdrant` | Stores embedding vectors |
@@ -165,8 +180,13 @@ python scrapeGPT.py
 
 ### Gradio Web UI
 1. Open **http://localhost:7860** (or your server IP + port).
-2. On the **URL Input** tab, enter a website URL and click Submit to scrape it.
-3. Switch to the **QnA with Website** tab, type your question, and get an AI-generated answer.
+2. Use the **Flexible Chat** tab to interact with the bot in a single unified interface:
+   - Type any question and click **Submit** for a direct LLM answer.
+   - Include a URL in your message to have it scraped automatically before answering.
+   - Upload an image to analyse it (requires a vision model such as `llava`).
+   - Upload an audio file to transcribe speech or analyse music (BPM, key, etc.).
+3. The **URL Input** / **QnA with Website** tabs remain available for the original two-step workflow.
+4. Use the **Settings** tab to customise the system prompt.
 
 ### Telegram Bot
 1. Set up your bot via [BotFather](https://core.telegram.org/bots#botfather) and copy the token into `TELEGRAM_BOT_TOKEN`.
