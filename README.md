@@ -1,11 +1,19 @@
-# ScrapeGPT 
+# ScrapeGoat
 ## Web App & Telegram Bot for Web Content Analysis and Question Answering
 
-ScrapeGPT is a Gradio web app (and optional Telegram bot) that scrapes websites and answers questions about them using a local LLM via [Ollama](https://ollama.com). The idea came from a job interview assignment to "study our company website and provide new product recommendations" — this automates the entire process.
+ScrapeGoat is a Gradio web app (and optional Telegram bot) that scrapes websites and answers questions about them using a local LLM via [Ollama](https://ollama.com). The idea came from a job interview assignment to "study our company website and provide new product recommendations" — this automates the entire process.
 
 > **Note:** There are two entry points:
-> - `scrapeGPT_gradio_app.py` — Gradio web UI (recommended, used by Docker)
-> - `scrapeGPT.py` — Telegram bot (includes a commented CLI `main()` at the bottom)
+> - `scrapegoat_gradio_app.py` — Gradio web UI (recommended, used by Docker)
+> - `scrapegoat.py` — Telegram bot (includes a commented CLI `main()` at the bottom)
+
+---
+
+## Acknowledgements
+
+ScrapeGoat is a fully independent fork of [ScrapeGPT](https://github.com/vintagedon/scrapeGPT) by [@vintagedon](https://github.com/vintagedon). The original project provided the foundational web-scraping and question-answering concept that this application builds upon. Many thanks to the original author for their efforts and for open-sourcing their work — it made this possible.
+
+---
 
 ## Features
 
@@ -46,6 +54,7 @@ cd scrapeGPT
 ```
 
 #### 2. Configure environment variables
+
 ```bash
 cp .env.example .env
 # Edit .env as needed (set OLLAMA_MODEL, ports, etc.)
@@ -66,7 +75,7 @@ Key variables in `.env`:
 ```bash
 docker compose up -d
 ```
-This starts both **scrapeGPT** and **Ollama** containers.
+This starts both **ScrapeGoat** and **Ollama** containers.
 
 #### Optional: Enable GPU speech transcription with WhisperLive
 
@@ -99,29 +108,29 @@ The image is published to GitHub Container Registry and can be pulled directly:
 ```bash
 # Run with an existing Ollama container on the same network
 docker run -d \
-  --name scrapegpt \
+  --name scrapegoat \
   -p 7860:7860 \
   -e OLLAMA_HOST=http://ollama:11434 \
   -e OLLAMA_MODEL=qwen:0.5b \
-  -v scrapegpt_data:/data \
-  -v scrapegpt_qdrant:/app/tmp/local_qdrant \
+  -v scrapegoat_data:/data \
+  -v scrapegoat_qdrant:/app/tmp/local_qdrant \
   --network <your-docker-network> \
-  ghcr.io/julesdg6/scrapegpt:latest
+  ghcr.io/julesdg6/scrapeGPT:latest
 ```
 
 > **Connecting to Ollama in another container:**  
 > Both containers must share a Docker network. With Compose this is automatic. For manual setups, create a network first:
 > ```bash
-> docker network create scrapegpt-net
-> docker run -d --name ollama --network scrapegpt-net -p 11434:11434 -v ollama_data:/root/.ollama ollama/ollama
-> docker run -d --name scrapegpt --network scrapegpt-net -p 7860:7860 -e OLLAMA_HOST=http://ollama:11434 ghcr.io/julesdg6/scrapegpt:latest
+> docker network create scrapegoat-net
+> docker run -d --name ollama --network scrapegoat-net -p 11434:11434 -v ollama_data:/root/.ollama ollama/ollama
+> docker run -d --name scrapegoat --network scrapegoat-net -p 7860:7860 -e OLLAMA_HOST=http://ollama:11434 ghcr.io/julesdg6/scrapeGPT:latest
 > ```
 
 ---
 
 ### Option B — Unraid Install
 
-ScrapeGPT includes an Unraid Docker template for easy container configuration. The Docker image is published to GitHub Container Registry and will be pulled automatically — no manual build step required.
+ScrapeGoat includes an Unraid Docker template for easy container configuration. The Docker image is published to GitHub Container Registry and will be pulled automatically — no manual build step required.
 
 #### Prerequisites
 - Unraid with Docker enabled.
@@ -136,14 +145,14 @@ ScrapeGPT includes an Unraid Docker template for easy container configuration. T
      docker exec -it ollama ollama pull qwen:0.5b
      ```
 
-2. **Add the ScrapeGPT container using the template**:
+2. **Add the ScrapeGoat container using the template**:
    - Open the Unraid terminal (Tools → Terminal) or SSH into your server and download the template:
      ```bash
-     wget -O /boot/config/plugins/dockerMan/templates-user/scrapeGPT.xml \
-       https://raw.githubusercontent.com/julesdg6/scrapeGPT/main/unraid/scrapeGPT.xml
+     wget -O /boot/config/plugins/dockerMan/templates-user/scrapegoat.xml \
+       https://raw.githubusercontent.com/julesdg6/scrapeGPT/main/unraid/scrapegoat.xml
      ```
    - In Unraid, go to **Docker** → **Add Container**.
-   - In the *Template* dropdown at the top, select **ScrapeGPT** to auto-populate the settings.
+   - In the *Template* dropdown at the top, select **ScrapeGoat** to auto-populate the settings.
    - Review and configure the variables:
 
      | Variable | Recommended Value | Notes |
@@ -153,15 +162,15 @@ ScrapeGPT includes an Unraid Docker template for easy container configuration. T
      | **Ollama Vision Model** | `llava` | For image analysis; must be pulled first: `ollama pull llava` |
      | **WhisperLive Host** | `http://whisperlive:9090` | (Optional) For speech transcription; run `ghcr.io/collabora/whisperlive-gpu:latest` on the same network. Leave empty to disable. |
      | **WebUI Port** | `7860` | Host port to access Gradio |
-     | **App Data** | `/mnt/user/appdata/scrapegpt` | Stores `db.json` |
-     | **Qdrant Vector Store** | `/mnt/user/appdata/scrapegpt/qdrant` | Stores embedding vectors |
+     | **App Data** | `/mnt/user/appdata/scrapegoat` | Stores `db.json` |
+     | **Qdrant Vector Store** | `/mnt/user/appdata/scrapegoat/qdrant` | Stores embedding vectors |
 
-   - Click **Apply** to start the container. Unraid will pull `ghcr.io/julesdg6/scrapegpt:latest` automatically.
+   - Click **Apply** to start the container. Unraid will pull `ghcr.io/julesdg6/scrapeGPT:latest` automatically.
 
 3. **Access the UI**:  
    Open `http://<unraid-ip>:7860` in your browser.
 
-> **Tip:** Make sure both `scrapegpt` and `ollama` containers are on the same custom Docker network (e.g., `br0` bridge or a custom bridge) so that `http://ollama:11434` resolves correctly. You can set the network for each container in the Docker settings under *Advanced View*.
+> **Tip:** Make sure both `scrapegoat` and `ollama` containers are on the same custom Docker network (e.g., `br0` bridge or a custom bridge) so that `http://ollama:11434` resolves correctly. You can set the network for each container in the Docker settings under *Advanced View*.
 
 ---
 
@@ -182,12 +191,12 @@ ollama pull qwen:0.5b
 ```
 4. Run the Gradio app:
 ```bash
-python scrapeGPT_gradio_app.py
+python scrapegoat_gradio_app.py
 ```
 Or the Telegram bot (set `TELEGRAM_BOT_TOKEN` env var first):
 ```bash
 export TELEGRAM_BOT_TOKEN=your_token_here
-python scrapeGPT.py
+python scrapegoat.py
 ```
 
 ---
@@ -206,7 +215,7 @@ python scrapeGPT.py
 
 ### Telegram Bot
 1. Set up your bot via [BotFather](https://core.telegram.org/bots#botfather) and copy the token into `TELEGRAM_BOT_TOKEN`.
-2. Run `python scrapeGPT.py`.
+2. Run `python scrapegoat.py`.
 3. Send `/start` in Telegram, provide a URL, then ask questions.
 
 ---

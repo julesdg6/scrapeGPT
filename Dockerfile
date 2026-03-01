@@ -17,8 +17,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY scrapeGPT_gradio_app.py .
-COPY scrapeGPT.py .
+COPY scrapegoat_gradio_app.py .
+COPY scrapegoat.py .
 COPY db.json .
 
 # Persistent data directory
@@ -33,4 +33,4 @@ ENV OLLAMA_HOST=http://ollama:11434 \
     CONFIG_PATH=/data/config.json \
     WHISPERLIVE_HOST=
 
-CMD ["python", "scrapeGPT_gradio_app.py"]
+CMD ["python", "scrapegoat_gradio_app.py"]
